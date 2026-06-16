@@ -375,13 +375,16 @@ fn search<NT: NodeType>(
         }
 
         if NT::ROOT_NODE {
+            let root_depth = thread.root_depth;
             let seldepth = thread.seldepth;
+
             let root_move = thread.get_root_move_mut(mv);
 
             root_move.nodes += nodes_after - nodes_before;
             root_move.window_score = score;
 
             if move_count == 1 || score > alpha {
+                root_move.searched_depth = root_depth;
                 root_move.seldepth = seldepth;
 
                 root_move.display_score = score;
@@ -529,7 +532,7 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
                     let time = thread.shared().elapsed();
                     if time >= WIDEN_REPORT_DELAY {
                         let nodes = thread.shared().total_nodes();
-                        report_single(thread, thread.root_depth, time, nodes, ctx.multipv, thread.pv_idx);
+                        report_single(thread, time, nodes, ctx.multipv, thread.pv_idx);
                     }
                 }
 
@@ -560,7 +563,7 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
                     || (!thread.shared().options.minimal
                         && (last_pv || thread.shared().elapsed() >= VERBOSE_MULTIPV_DELAY))
                 {
-                    report(thread, thread.root_depth, thread.shared().elapsed(), ctx.multipv);
+                    report(thread, thread.shared().elapsed(), ctx.multipv);
                 }
             }
 
@@ -592,19 +595,14 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
     }
 }
 
-fn report_single(thread: &ThreadData, depth: i32, time: f64, nodes: usize, multipv: usize, pv_idx: usize) -> bool {
+fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, pv_idx: usize) -> bool {
     let root_move = &thread.root_moves[pv_idx];
 
     // previous scores are exact, as the depth was completed
-    let (depth, score, upper_bound, lower_bound) = if root_move.score == -SCORE_INF {
-        ((depth - 1).max(1), root_move.previous_score, false, false)
+    let (score, upper_bound, lower_bound) = if root_move.score == -SCORE_INF {
+        (root_move.previous_score, false, false)
     } else {
-        (
-            depth,
-            root_move.display_score,
-            root_move.upper_bound,
-            root_move.lower_bound,
-        )
+        (root_move.display_score, root_move.upper_bound, root_move.lower_bound)
     };
 
     if score == -SCORE_INF {
@@ -612,7 +610,6 @@ fn report_single(thread: &ThreadData, depth: i32, time: f64, nodes: usize, multi
         return false;
     }
 
-    assert_ne!(depth, 0);
     assert_ne!(score, -SCORE_INF);
 
     let ms = (time * 1000.0) as usize;
@@ -626,7 +623,7 @@ fn report_single(thread: &ThreadData, depth: i32, time: f64, nodes: usize, multi
 
     print!(
         "depth {} seldepth {} time {} nodes {} nps {} score ",
-        depth, root_move.seldepth, ms, nodes, nps
+        root_move.searched_depth, root_move.seldepth, ms, nodes, nps
     );
 
     if score.abs() > SCORE_WIN {
@@ -682,10 +679,10 @@ fn report_single(thread: &ThreadData, depth: i32, time: f64, nodes: usize, multi
     true
 }
 
-fn report(thread: &ThreadData, depth: i32, time: f64, multipv: usize) {
+fn report(thread: &ThreadData, time: f64, multipv: usize) {
     let nodes = thread.shared().total_nodes();
     for pv_idx in 0..multipv {
-        if !report_single(thread, depth, time, nodes, multipv, pv_idx) {
+        if !report_single(thread, time, nodes, multipv, pv_idx) {
             break;
         }
     }
