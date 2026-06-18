@@ -296,11 +296,11 @@ impl ThreadData {
     }
 
     pub fn sort_searched_root_moves(&mut self) {
-        self.root_moves[..=self.pv_idx].sort_by(|a, b| b.score.cmp(&a.score));
+        self.root_moves[..=self.pv_idx].sort_by_key(|mv| std::cmp::Reverse(mv.score));
     }
 
     pub fn sort_remaining_root_moves(&mut self) {
-        self.root_moves[self.pv_idx..].sort_by(|a, b| b.score.cmp(&a.score));
+        self.root_moves[self.pv_idx..].sort_by_key(|mv| std::cmp::Reverse(mv.score));
     }
 
     pub fn apply_move(&mut self, ply: i32, pos: &Position, mv: Move) -> Position {

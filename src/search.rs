@@ -82,6 +82,8 @@ const LMR_TABLE_MOVES: usize = 64;
 
 #[static_init::dynamic]
 static LMR_REDUCTIONS: [[i32; LMR_TABLE_MOVES]; MAX_DEPTH as usize] = {
+    #![allow(clippy::needless_range_loop)]
+
     const BASE: f64 = 0.5;
     const DIVISOR: f64 = 2.5;
 
@@ -282,6 +284,7 @@ fn search<NT: NodeType>(
             continue;
         }
 
+        #[allow(clippy::collapsible_if)]
         if !NT::ROOT_NODE && best_score > -SCORE_WIN {
             if depth <= 6 && move_count as i32 >= 5 + 2 * depth * depth {
                 break;
@@ -705,6 +708,7 @@ fn final_report(thread: &ThreadData, _depth: i32, _time: f64, _multipv: usize) {
 }
 
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 enum ThreadCommand {
     Ping,
     StartSearch(Arc<SharedContext>, SearchContext),

@@ -47,6 +47,7 @@ pub(super) const fn generate_mask(sq: Square) -> u64 {
     mask.raw()
 }
 
+#[allow(unreachable_code)]
 pub(super) fn pdep(v: u64, mask: u64) -> u64 {
     #[cfg(target_feature = "bmi2")]
     {

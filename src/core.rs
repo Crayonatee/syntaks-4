@@ -292,19 +292,10 @@ impl Square {
     #[must_use]
     pub const fn shift_checked(self, dir: Direction) -> Option<Self> {
         match dir {
-            Direction::Left => {
-                if self.file() == 0 {
-                    return None;
-                }
-            }
-            Direction::Right => {
-                if self.file() == 5 {
-                    return None;
-                }
-            }
-            _ => {}
+            Direction::Left if self.file() == 0 => None,
+            Direction::Right if self.file() == 5 => None,
+            _ => self.shift(dir),
         }
-        self.shift(dir)
     }
 
     #[must_use]
