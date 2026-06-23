@@ -32,10 +32,10 @@ pub struct Bitboard {
 impl Bitboard {
     const MASK: u64 = (1 << Square::COUNT) - 1;
 
-    pub const UPPER_EDGE: Self = Self::from_raw(0xfc0000000);
-    pub const LOWER_EDGE: Self = Self::from_raw(0x3f);
-    pub const LEFT_EDGE: Self = Self::from_raw(0x41041041);
-    pub const RIGHT_EDGE: Self = Self::from_raw(0x820820820);
+    pub const UPPER_EDGE: Self = Self::from_raw(0xf000);
+    pub const LOWER_EDGE: Self = Self::from_raw(0xf);
+    pub const LEFT_EDGE: Self = Self::from_raw(0x8888);
+    pub const RIGHT_EDGE: Self = Self::from_raw(0x1111);
 
     #[must_use]
     pub const fn empty() -> Self {

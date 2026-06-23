@@ -45,26 +45,10 @@ pub const SCORE_INF: Score = 32767;
 pub const SCORE_MATE: Score = SCORE_INF - 1;
 pub const SCORE_WIN: Score = 25000;
 
-#[must_use]
-pub const fn is_win(score: Score) -> bool {
-    score > SCORE_WIN
-}
-
-#[must_use]
-pub const fn is_loss(score: Score) -> bool {
-    score < -SCORE_WIN
-}
-
-#[must_use]
-pub const fn is_decisive(score: Score) -> bool {
-    score.abs() > SCORE_WIN
-}
-
 pub const MAX_DEPTH: i32 = 255;
 
 const WIDEN_REPORT_DELAY: f64 = 1.0;
 const VERBOSE_MULTIPV_DELAY: f64 = 1.0;
-const CURRMOVE_REPORT_DELAY: f64 = 2.5;
 
 #[derive(Clone, Debug)]
 pub struct SearchContext {
@@ -97,8 +81,6 @@ const LMR_TABLE_MOVES: usize = 64;
 
 #[static_init::dynamic]
 static LMR_REDUCTIONS: [[i32; LMR_TABLE_MOVES]; MAX_DEPTH as usize] = {
-    #![allow(clippy::needless_range_loop)]
-
     const BASE: f64 = 0.5;
     const DIVISOR: f64 = 2.5;
 
@@ -262,7 +244,7 @@ fn search<NT: NodeType>(
             thread.pop_move();
 
             if score >= beta {
-                return if is_win(score) { beta } else { score };
+                return if score > SCORE_WIN { beta } else { score };
             }
         }
     }
@@ -299,8 +281,7 @@ fn search<NT: NodeType>(
             continue;
         }
 
-        #[allow(clippy::collapsible_if)]
-        if !NT::ROOT_NODE && !is_loss(best_score) {
+        if !NT::ROOT_NODE && best_score > -SCORE_WIN {
             if depth <= 6 && move_count as i32 >= 5 + 2 * depth * depth {
                 break;
             }
@@ -309,16 +290,6 @@ fn search<NT: NodeType>(
         let mut extension = 0;
 
         move_count += 1;
-
-        if NT::ROOT_NODE
-            && thread.shared().options.show_curr_move
-            && !thread.shared().options.minimal
-            && thread.is_main_thread()
-            && thread.shared().elapsed() > CURRMOVE_REPORT_DELAY
-        {
-            let move_number = thread.pv_idx + move_count;
-            println!("info depth {} currmove {} currmovenumber {}", depth, mv, move_number);
-        }
 
         if NT::PV_NODE {
             child_data[0].pv.clear();
@@ -346,7 +317,7 @@ fn search<NT: NodeType>(
 
             let new_depth = depth + extension - 1;
 
-            if depth >= 2 && move_count >= 2 + usize::from(NT::PV_NODE) + usize::from(NT::ROOT_NODE) {
+            if depth >= 2 && move_count >= 5 + 2 * usize::from(NT::ROOT_NODE) {
                 let mut r = LMR_REDUCTIONS[depth as usize - 1][move_count.min(LMR_TABLE_MOVES) - 1];
 
                 r += 1024 * i32::from(!NT::PV_NODE);
@@ -404,16 +375,13 @@ fn search<NT: NodeType>(
         }
 
         if NT::ROOT_NODE {
-            let root_depth = thread.root_depth;
             let seldepth = thread.seldepth;
-
             let root_move = thread.get_root_move_mut(mv);
 
             root_move.nodes += nodes_after - nodes_before;
             root_move.window_score = score;
 
             if move_count == 1 || score > alpha {
-                root_move.searched_depth = root_depth;
                 root_move.seldepth = seldepth;
 
                 root_move.display_score = score;
@@ -561,7 +529,7 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
                     let time = thread.shared().elapsed();
                     if time >= WIDEN_REPORT_DELAY {
                         let nodes = thread.shared().total_nodes();
-                        report_single(thread, time, nodes, ctx.multipv, thread.pv_idx);
+                        report_single(thread, thread.root_depth, time, nodes, ctx.multipv, thread.pv_idx);
                     }
                 }
 
@@ -592,7 +560,7 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
                     || (!thread.shared().options.minimal
                         && (last_pv || thread.shared().elapsed() >= VERBOSE_MULTIPV_DELAY))
                 {
-                    report(thread, thread.shared().elapsed(), ctx.multipv);
+                    report(thread, thread.root_depth, thread.shared().elapsed(), ctx.multipv);
                 }
             }
 
@@ -624,14 +592,19 @@ fn run_search(shared: Arc<SharedContext>, ctx: &SearchContext, thread: &mut Thre
     }
 }
 
-fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, pv_idx: usize) -> bool {
+fn report_single(thread: &ThreadData, depth: i32, time: f64, nodes: usize, multipv: usize, pv_idx: usize) -> bool {
     let root_move = &thread.root_moves[pv_idx];
 
     // previous scores are exact, as the depth was completed
-    let (score, upper_bound, lower_bound) = if root_move.score == -SCORE_INF {
-        (root_move.previous_score, false, false)
+    let (depth, score, upper_bound, lower_bound) = if root_move.score == -SCORE_INF {
+        ((depth - 1).max(1), root_move.previous_score, false, false)
     } else {
-        (root_move.display_score, root_move.upper_bound, root_move.lower_bound)
+        (
+            depth,
+            root_move.display_score,
+            root_move.upper_bound,
+            root_move.lower_bound,
+        )
     };
 
     if score == -SCORE_INF {
@@ -639,6 +612,7 @@ fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, p
         return false;
     }
 
+    assert_ne!(depth, 0);
     assert_ne!(score, -SCORE_INF);
 
     let ms = (time * 1000.0) as usize;
@@ -652,10 +626,10 @@ fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, p
 
     print!(
         "depth {} seldepth {} time {} nodes {} nps {} score ",
-        root_move.searched_depth, root_move.seldepth, ms, nodes, nps
+        depth, root_move.seldepth, ms, nodes, nps
     );
 
-    if is_decisive(score) {
+    if score.abs() > SCORE_WIN {
         if score > 0 {
             print!("mate {}", (SCORE_MATE - score + 1) / 2);
         } else {
@@ -675,7 +649,7 @@ fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, p
         print!(" lowerbound");
     }
 
-    if is_decisive(score) {
+    if score.abs() > SCORE_WIN {
         if score > 0 {
             print!(" wdl 1000 0 0");
         } else {
@@ -708,10 +682,10 @@ fn report_single(thread: &ThreadData, time: f64, nodes: usize, multipv: usize, p
     true
 }
 
-fn report(thread: &ThreadData, time: f64, multipv: usize) {
+fn report(thread: &ThreadData, depth: i32, time: f64, multipv: usize) {
     let nodes = thread.shared().total_nodes();
     for pv_idx in 0..multipv {
-        if !report_single(thread, time, nodes, multipv, pv_idx) {
+        if !report_single(thread, depth, time, nodes, multipv, pv_idx) {
             break;
         }
     }
@@ -723,7 +697,6 @@ fn final_report(thread: &ThreadData, _depth: i32, _time: f64, _multipv: usize) {
 }
 
 #[derive(Clone)]
-#[allow(clippy::large_enum_variant)]
 enum ThreadCommand {
     Ping,
     StartSearch(Arc<SharedContext>, SearchContext),

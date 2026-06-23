@@ -43,8 +43,8 @@ pub fn has_road(road_occ: Bitboard) -> bool {
     let left = road_occ & left_edge;
     let right = road_occ & right_edge;
 
-    let up = up | (up >> 6 & road_occ);
-    let down = down | (down << 6 & road_occ);
+    let up = up | (up >> 4 & road_occ);
+    let down = down | (down << 4 & road_occ);
     let left = left | (left << 1 & road_occ);
     let right = right | (right >> 1 & road_occ);
 

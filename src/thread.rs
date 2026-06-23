@@ -189,7 +189,6 @@ pub struct RootMove {
     pub previous_score: Score,
     pub upper_bound: bool,
     pub lower_bound: bool,
-    pub searched_depth: i32,
     pub seldepth: i32,
     pub pv: PvList,
     pub nodes: usize,
@@ -205,7 +204,6 @@ impl RootMove {
             previous_score: -SCORE_INF,
             upper_bound: false,
             lower_bound: false,
-            searched_depth: 1,
             seldepth: 0,
             pv: PvList::new(),
             nodes: 0,
@@ -296,11 +294,11 @@ impl ThreadData {
     }
 
     pub fn sort_searched_root_moves(&mut self) {
-        self.root_moves[..=self.pv_idx].sort_by_key(|mv| std::cmp::Reverse(mv.score));
+        self.root_moves[..=self.pv_idx].sort_by(|a, b| b.score.cmp(&a.score));
     }
 
     pub fn sort_remaining_root_moves(&mut self) {
-        self.root_moves[self.pv_idx..].sort_by_key(|mv| std::cmp::Reverse(mv.score));
+        self.root_moves[self.pv_idx..].sort_by(|a, b| b.score.cmp(&a.score));
     }
 
     pub fn apply_move(&mut self, ply: i32, pos: &Position, mv: Move) -> Position {

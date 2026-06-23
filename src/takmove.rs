@@ -33,8 +33,8 @@ pub struct Move {
 }
 
 impl Move {
-    const SQUARE_BITS: usize = 6;
-    const PATTERN_BITS: usize = 6;
+    const SQUARE_BITS: usize = 4;
+    const PATTERN_BITS: usize = 4;
     const FLAG_BITS: usize = 2;
     pub const TOTAL_BITS: usize = Self::SQUARE_BITS + Self::PATTERN_BITS + Self::FLAG_BITS;
 
@@ -142,7 +142,7 @@ impl Display for Move {
             let pattern = self.pattern();
 
             let dropped = pattern.trailing_zeros();
-            let taken = 6 - dropped;
+            let taken = 4 - dropped;
 
             if taken == 1 {
                 write!(f, "{}{}", self.sq(), self.dir())?;
@@ -248,7 +248,7 @@ impl FromStr for Move {
         let taken = taken.unwrap_or(1);
         let bytes = bytes.strip_suffix(b"*").unwrap_or(bytes);
 
-        if (s.len() - next) > 6 {
+        if (s.len() - next) > 4 {
             return Err(MoveStrError::TooManySpreadSteps);
         }
 
@@ -256,7 +256,7 @@ impl FromStr for Move {
         let mut bit = 1;
 
         for &pattern_char in &bytes[next..] {
-            if !(b'1'..=b'6').contains(&pattern_char) {
+            if !(b'1'..=b'4').contains(&pattern_char) {
                 return Err(MoveStrError::InvalidSpreadPattern);
             }
 

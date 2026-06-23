@@ -32,11 +32,11 @@ use std::str::FromStr;
 use std::sync::atomic;
 use std::sync::atomic::AtomicU8;
 
-pub const DEFAULT_FLATS: u8 = 30;
+pub const DEFAULT_FLATS: u8 = 15;
 pub const MIN_FLATS: u8 = 2;
 pub const MAX_FLATS: u8 = 36;
 
-pub const DEFAULT_CAPS: u8 = 1;
+pub const DEFAULT_CAPS: u8 = 0;
 pub const MIN_CAPS: u8 = 0;
 pub const MAX_CAPS: u8 = 4;
 
@@ -89,8 +89,8 @@ pub struct Stacks {
 }
 
 impl Stacks {
-    // all flats + cap
-    pub const MAX_HEIGHT: usize = 30 + 30 + 1;
+    // all stones (no capstone)
+    pub const MAX_HEIGHT: usize = (DEFAULT_FLATS + DEFAULT_FLATS) as usize;
 
     #[must_use]
     pub fn is_empty(&self, sq: Square) -> bool {
@@ -141,7 +141,7 @@ impl Stacks {
     fn take(&mut self, sq: Square, count: u8) -> (u8, PieceType, Option<Player>) {
         debug_assert!(count <= self.heights[sq.idx()]);
         debug_assert!(count > 0);
-        debug_assert!(count <= 6);
+        debug_assert!(count <= 4);
 
         let players = (self.players[sq.idx()] >> (self.heights[sq.idx()] - count)) & ((1 << count) - 1);
         let top = self.tops[sq.idx()].unwrap();
@@ -246,7 +246,7 @@ pub struct Position {
 }
 
 impl Position {
-    pub const CARRY_LIMIT: u8 = 6;
+    pub const CARRY_LIMIT: u8 = 4;
     pub const KOMI: u32 = 2;
 
     #[must_use]
@@ -269,17 +269,17 @@ impl Position {
         }
 
         let ranks: Vec<&str> = parts[0].split('/').collect();
-        if ranks.len() != 6 {
+        if ranks.len() != 4 {
             return Err(TpsError::WrongNumberOfRanks);
         }
 
         let mut pos = Self::startpos();
 
-        for rank_idx in 0..6 {
+        for rank_idx in 0..4 {
             let mut file_idx = 0;
 
-            for stack in ranks[5 - rank_idx as usize].split(',') {
-                if file_idx >= 6 {
+            for stack in ranks[4 - 1 - rank_idx as usize].split(',') {
+                if file_idx >= 4 {
                     return Err(TpsError::WrongNumberOfFiles);
                 }
 
@@ -334,7 +334,7 @@ impl Position {
                 }
             }
 
-            if file_idx > 6 {
+            if file_idx > 4 {
                 return Err(TpsError::WrongNumberOfFiles);
             }
         }
@@ -499,7 +499,7 @@ impl Position {
 
             let pattern = mv.pattern();
 
-            let taken = 6 - pattern.trailing_zeros();
+            let taken = 4 - pattern.trailing_zeros();
             if taken > self.stacks.height(mv.sq()) as u32 {
                 return false;
             }
@@ -563,7 +563,7 @@ impl Position {
             let dir = mv.dir();
 
             let dropped = pattern.trailing_zeros();
-            let taken = 6 - dropped;
+            let taken = 4 - dropped;
 
             let mut pattern = pattern >> dropped;
             let (mut players, top, new_top_player) = new_pos.stacks.take(mv.sq(), taken as u8);
@@ -686,17 +686,17 @@ impl Position {
     pub fn tps(&self) -> String {
         let mut tps = String::with_capacity(21);
 
-        for rank in (0..6).rev() {
+        for rank in (0..4).rev() {
             let mut groups = Vec::new();
 
             let mut file = 0;
-            while file < 6 {
+            while file < 4 {
                 let sq = Square::from_file_rank(file, rank).unwrap();
 
                 if self.stacks.is_empty(sq) {
                     let mut empty = 1;
 
-                    while file < 5 && self.stacks.is_empty(Square::from_file_rank(file + 1, rank).unwrap()) {
+                    while file < 3 && self.stacks.is_empty(Square::from_file_rank(file + 1, rank).unwrap()) {
                         file += 1;
                         empty += 1;
                     }
@@ -749,8 +749,8 @@ impl Position {
         self.players.fill(Bitboard::empty());
         self.pieces.fill(Bitboard::empty());
 
-        self.flats_in_hand.fill(30);
-        self.caps_in_hand.fill(1);
+        self.flats_in_hand.fill(DEFAULT_FLATS);
+        self.caps_in_hand.fill(DEFAULT_CAPS);
 
         for sq_idx in 0..Square::COUNT {
             let sq = Square::from_raw(sq_idx as u8).unwrap();

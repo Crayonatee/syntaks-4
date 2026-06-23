@@ -40,8 +40,8 @@ pub(super) fn has_road(road_occ: u64, up: u64, down: u64, left: u64, right: u64)
     let road_occ = _mm256_set1_epi64x(road_occ as i64);
 
     let calc_next_masks = |masks| {
-        let next_masks_u = _mm256_slli_epi64::<6>(masks);
-        let next_masks_d = _mm256_srli_epi64::<6>(masks);
+        let next_masks_u = _mm256_slli_epi64::<4>(masks);
+        let next_masks_d = _mm256_srli_epi64::<4>(masks);
         let next_masks_ud = _mm256_or_si256(next_masks_u, next_masks_d);
 
         let next_masks_l = _mm256_andnot_si256(left_edge, _mm256_slli_epi64::<1>(masks));

@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-use crate::search::{Score, is_loss, is_win};
+use crate::search::{SCORE_WIN, Score};
 use crate::takmove::Move;
 use std::arch::x86_64::{_MM_HINT_T0, _mm_prefetch};
 use std::mem::MaybeUninit;
@@ -86,9 +86,9 @@ fn pack_entry_key(key: u64) -> u16 {
 
 #[must_use]
 fn score_to_tt(score: Score, ply: i32) -> i16 {
-    if is_loss(score) {
+    if score < -SCORE_WIN {
         (score - ply) as i16
-    } else if is_win(score) {
+    } else if score > SCORE_WIN {
         (score + ply) as i16
     } else {
         score as i16
@@ -98,9 +98,9 @@ fn score_to_tt(score: Score, ply: i32) -> i16 {
 #[must_use]
 fn score_from_tt(score: i16, ply: i32) -> Score {
     let score = score as Score;
-    if is_loss(score) {
+    if score < -SCORE_WIN {
         score + ply
-    } else if is_win(score) {
+    } else if score > SCORE_WIN {
         score - ply
     } else {
         score

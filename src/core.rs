@@ -205,7 +205,7 @@ impl Direction {
 
     #[must_use]
     pub const fn offset(self) -> i8 {
-        [6, -6, -1, 1][self.idx()]
+        [4, -4, -1, 1][self.idx()]
     }
 }
 
@@ -224,16 +224,14 @@ impl Display for Direction {
 #[repr(u8)]
 #[rustfmt::skip]
 pub enum Square {
-    A1, B1, C1, D1, E1, F1,
-    A2, B2, C2, D2, E2, F2,
-    A3, B3, C3, D3, E3, F3,
-    A4, B4, C4, D4, E4, F4,
-    A5, B5, C5, D5, E5, F5,
-    A6, B6, C6, D6, E6, F6,
+    A1, B1, C1, D1,
+    A2, B2, C2, D2,
+    A3, B3, C3, D3,
+    A4, B4, C4, D4,
 }
 
 impl Square {
-    pub const COUNT: usize = 36;
+    pub const COUNT: usize = 16;
 
     #[must_use]
     pub const fn from_raw(raw: u8) -> Option<Self> {
@@ -247,10 +245,10 @@ impl Square {
 
     #[must_use]
     pub const fn from_file_rank(file: u32, rank: u32) -> Option<Self> {
-        if file >= 6 || rank >= 6 {
+        if file >= 4 || rank >= 4 {
             None
         } else {
-            Some(Self::from_raw((rank as u8 * 6) + file as u8).unwrap())
+            Some(Self::from_raw((rank as u8 * 4) + file as u8).unwrap())
         }
     }
 
@@ -266,12 +264,12 @@ impl Square {
 
     #[must_use]
     pub const fn rank(self) -> u32 {
-        self.raw() as u32 / 6
+        self.raw() as u32 / 4
     }
 
     #[must_use]
     pub const fn file(self) -> u32 {
-        self.raw() as u32 % 6
+        self.raw() as u32 % 4
     }
 
     #[must_use]
@@ -292,10 +290,19 @@ impl Square {
     #[must_use]
     pub const fn shift_checked(self, dir: Direction) -> Option<Self> {
         match dir {
-            Direction::Left if self.file() == 0 => None,
-            Direction::Right if self.file() == 5 => None,
-            _ => self.shift(dir),
+            Direction::Left => {
+                if self.file() == 0 {
+                    return None;
+                }
+            }
+            Direction::Right => {
+                if self.file() == 3 {
+                    return None;
+                }
+            }
+            _ => {}
         }
+        self.shift(dir)
     }
 
     #[must_use]
@@ -334,12 +341,12 @@ impl FromStr for Square {
         }
 
         let file = bytes[0];
-        if !(b'a'..=b'f').contains(&file) {
+        if !(b'a'..=b'd').contains(&file) {
             return Err(SquareStrError::InvalidFile);
         }
 
         let rank = bytes[1];
-        if !(b'1'..=b'6').contains(&rank) {
+        if !(b'1'..=b'4').contains(&rank) {
             return Err(SquareStrError::InvalidRank);
         }
 

@@ -29,12 +29,12 @@ use crate::core::{Direction, Piece, PieceType, Player, Square};
 use crate::search::Score;
 
 #[static_init::dynamic]
-static RINGS: [Bitboard; 5] = {
-    let mut covered = Bitboard::from_raw(1 << 14 | 1 << 15 | 1 << 20 | 1 << 21);
+static RINGS: [Bitboard; 3] = {
+    let mut covered = Bitboard::from_raw(1 << 5 | 1 << 6 | 1 << 9 | 1 << 10);
     let mut curr = covered;
     array::from_fn(|_| {
         let r = curr;
-        curr = (curr << 6 | curr >> 6 | curr << 1 | curr >> 1) & !covered;
+        curr = (curr << 4 | curr >> 4 | curr << 1 | curr >> 1) & !covered;
         covered |= curr;
         r
     })
@@ -60,12 +60,10 @@ const ADJACENT_MASKS: [Bitboard; Square::COUNT] = {
 
 #[rustfmt::skip]
 const CAP_PSQT: [Score; Square::COUNT] = [
-    -20,  -5,  -5,  -5,  -5, -20,
-     -5,  10,  18,  18,  10,  -5,
-     -5,  18,  35,  35,  18,  -5,
-     -5,  18,  35,  35,  18,  -5,
-     -5,  10,  18,  18,  10,  -5,
-    -20,  -5,  -5,  -5,  -5, -20,
+    -20,  -5,  -5,  -20,
+     -5,  30,  30,   -5,
+     -5,  30,  30,   -5,
+    -20,  -5,  -5,  -20,
 ];
 
 #[must_use]
@@ -106,9 +104,9 @@ fn static_eval_player(pos: &Position, player: Player, komi: u32) -> Score {
 
         let mut players = stacks.players(sq) ^ player_flip;
 
-        if height > 7 {
-            players >>= height - 7;
-            height = 7;
+        if height > 5 {
+            players >>= height - 5;
+            height = 5;
         }
 
         let mask = (1 << (height - 1)) - 1;

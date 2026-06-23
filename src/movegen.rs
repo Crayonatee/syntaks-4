@@ -67,7 +67,7 @@ fn do_spreads(dst: &mut Vec<Move>, sq: Square, dir: Direction, lsb: u16, mut pat
 fn generate_spreads(dst: &mut Vec<Move>, pos: &Position) {
     for sq in pos.player_bb(pos.stm()) {
         let top = pos.stacks().top(sq).unwrap();
-        let max = pos.stacks().height(sq).min(6);
+        let max = pos.stacks().height(sq).min(4);
 
         let start_bit = (1 << Position::CARRY_LIMIT) >> max;
 
