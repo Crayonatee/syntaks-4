@@ -34,8 +34,8 @@ impl Bitboard {
 
     pub const UPPER_EDGE: Self = Self::from_raw(0xf000);
     pub const LOWER_EDGE: Self = Self::from_raw(0xf);
-    pub const LEFT_EDGE: Self = Self::from_raw(0x8888);
-    pub const RIGHT_EDGE: Self = Self::from_raw(0x1111);
+    pub const LEFT_EDGE: Self = Self::from_raw(0x1111);
+    pub const RIGHT_EDGE: Self = Self::from_raw(0x8888);
 
     #[must_use]
     pub const fn empty() -> Self {
